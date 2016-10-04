@@ -1,3 +1,4 @@
+var Game = require("./models/game")
 module.exports = function(app, passport){
   function notImplemented(req, res){
     res.json({status : "not implemented"})
@@ -11,11 +12,34 @@ module.exports = function(app, passport){
 
   app.route("/api/games")
      .get(notImplemented)
-     .post(notImplemented);
+     .post(function(req, res){ //creating a game
+      new Game({playerX : req.body.playerX, playerO : req.body.playerO})
+      .save(function(error,data){
+        res.json(data)
+      })
+     })
 
   app.route("/api/games/:gameId")
      .get(notImplemented)
-     .put(notImplemented)
+     .put(function(req,res){
+       var gameId = req.params.gameId;
+       var move = req.body.move;
+       Game.findOne({_id:gameId}, function(error, game){
+         game.board[move] = game.playerX_turn ? "x" : "o";
+         game.playerX_turn = !game.playerX_turn;
+         game.save(function(error,savedGame) {
+           if(savedGame.winGame()){
+              res.json({"status": "Player " + game.winner + " wins"})
+           } else if(savedGame.emptySquares()){
+              res.json(savedGame)
+           } else {
+              res.json({"status": "Game Over"})
+           }
+
+         })
+       })
+
+     })
      .delete(notImplemented);
      // =====================================
          // LOGIN ===============================
@@ -33,7 +57,7 @@ module.exports = function(app, passport){
              failureRedirect : '/login', // redirect back to the signup page if there is an error
              failureFlash : true // allow flash messages
          }));
-         
+
          // process the login form
          // app.post('/login', do all our passport stuff here);
 
